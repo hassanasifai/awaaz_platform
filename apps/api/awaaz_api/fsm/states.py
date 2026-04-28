@@ -104,6 +104,7 @@ def build_state_registry() -> dict[str, State]:
                     "reschedule_delivery",
                     "flag_change_request",
                     "escalate_to_human",
+                    "end_conversation",
                 }
             ),
             max_turns=6,

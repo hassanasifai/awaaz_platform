@@ -66,8 +66,11 @@ async def get_conversation(
     org_id: UUID,
     store_id: UUID,
     conversation_id: UUID,
+    user: CurrentUserDep,
     db: DbDep,
 ) -> ConversationOut:
+    if user.org_id != org_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "wrong org")
     row = (
         await db.execute(
             text(

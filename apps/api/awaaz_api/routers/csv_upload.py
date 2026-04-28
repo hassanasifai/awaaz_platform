@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
@@ -128,8 +128,10 @@ def _parse_item(row: dict[str, str]) -> LineItemIn:
 
 def _parse_dt(value: str | None) -> datetime:
     if not value:
-        return datetime.utcnow()
+        return datetime.now(tz=timezone.utc)
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise ValueError(f"placed_at must be ISO-8601: {value!r}") from exc
+    # Naive timestamps are interpreted as UTC.
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)

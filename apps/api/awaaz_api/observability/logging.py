@@ -19,7 +19,9 @@ from structlog.contextvars import (
 from awaaz_api.settings import get_settings
 
 # Sensitive value patterns scrubbed from every log line.
-_PHONE_RE = re.compile(r"\+?\d{10,15}")
+# Narrowed to E.164 (must start with +<country>): avoids over-redacting
+# 10-digit order numbers, postal codes, etc.
+_PHONE_RE = re.compile(r"\+[1-9]\d{9,14}\b")
 _BEARER_RE = re.compile(r"Bearer\s+[A-Za-z0-9._\-]{20,}", re.IGNORECASE)
 _LONG_TOKEN_RE = re.compile(r"[A-Za-z0-9_\-]{32,}")
 _SECRET_KEYS: frozenset[str] = frozenset(

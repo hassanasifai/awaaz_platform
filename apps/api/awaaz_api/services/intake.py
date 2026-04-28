@@ -30,10 +30,12 @@ async def intake_order(
 ) -> IntakeResult:
     org_id = (
         await db.execute(
-            text("SELECT org_id FROM stores WHERE id = :sid"),
+            text("SELECT org_id FROM stores WHERE id = :sid AND status != 'deleted'"),
             {"sid": store_id},
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
+    if org_id is None:
+        raise ValueError(f"store {store_id} not found or deleted")
 
     phone_e164 = normalize_phone(payload.customer.phone)
     phone_hash = hash_phone(phone_e164)

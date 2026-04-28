@@ -27,7 +27,15 @@ export async function requireSession() {
 
 export async function requireRole(allowed: ReadonlyArray<string>) {
   const session = await requireSession();
-  // Memberships live in the API; the dashboard fetches them via the BFF
-  // route which forwards the session cookie.
+  // Memberships live in the API; the org-switcher route attaches the active
+  // membership role onto `session.user.activeMembershipRole`.  Anything else
+  // is a misconfiguration → 403.  Defense in depth: the API layer also
+  // re-checks via `RoleChecker` on every privileged endpoint.
+  const role = (session.user as { activeMembershipRole?: string }).activeMembershipRole;
+  if (!role || !allowed.includes(role)) {
+    const err = new Error(`Forbidden: role ${role ?? "<none>"} not in [${allowed.join(",")}]`);
+    (err as Error & { status?: number }).status = 403;
+    throw err;
+  }
   return session;
 }

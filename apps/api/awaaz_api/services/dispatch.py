@@ -74,7 +74,9 @@ async def schedule_retry(
 ) -> UUID | None:
     """Schedule a retry up to MAX_RETRY_ATTEMPTS; return None if exhausted."""
 
-    cap = 3
+    from awaaz_api.settings import get_settings
+
+    cap = get_settings().max_retry_attempts
     cur = (
         await db.execute(
             text("SELECT attempt_count FROM orders WHERE id = :oid"),
