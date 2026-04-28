@@ -1,0 +1,19 @@
+{
+  "scenario": "4.1 cooperative confirms",
+  "store": { "brand_name": "Lawn Bazaar", "agent_name": "Sahar" },
+  "order": {
+    "order_number": "1001",
+    "items": [{ "name": "Lawn Suit", "qty": 2, "unit_price": 2500 }],
+    "total": 5000,
+    "address": "Main St 1, Karachi"
+  },
+  "customer": { "name": "Ali Raza", "language": "ur" },
+  "transcript": [
+    { "role": "assistant", "text": "السلام علیکم، یہ Lawn Bazaar کی طرف سے Sahar ہوں۔" },
+    { "role": "user", "text": "جی" },
+    { "role": "assistant", "text": "آپ کا آرڈر 1001 ہے، دو اشیاء، کل پانچ ہزار روپے۔ پتہ Main St 1 Karachi۔ کیا کنفرم کر دوں؟" },
+    { "role": "user", "text": "ہاں ٹھیک ہے" },
+    { "role": "assistant", "tool": "confirm_order", "args": { "idempotency_key": "convo-1-confirm" } }
+  ],
+  "expected_outcome": "confirmed"
+}

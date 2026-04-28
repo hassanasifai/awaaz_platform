@@ -1,0 +1,21 @@
+{
+  "scenario": "4.2 customer cancels with reason",
+  "store": { "brand_name": "Lawn Bazaar", "agent_name": "Sahar" },
+  "order": { "order_number": "1002", "total": 4500 },
+  "customer": { "name": "Sara", "language": "ur" },
+  "transcript": [
+    { "role": "user", "text": "نہیں مجھے نہیں چاہیے" },
+    { "role": "assistant", "text": "ٹھیک ہے، کیا آپ بتا سکتی ہیں کیوں؟" },
+    { "role": "user", "text": "میں نے غلطی سے آرڈر کیا تھا" },
+    {
+      "role": "assistant",
+      "tool": "cancel_order",
+      "args": {
+        "idempotency_key": "convo-2-cancel",
+        "reason": "Ordered by mistake",
+        "reason_category": "ordered_by_mistake"
+      }
+    }
+  ],
+  "expected_outcome": "cancelled"
+}

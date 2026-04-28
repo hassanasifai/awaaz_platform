@@ -1,0 +1,19 @@
+{
+  "scenario": "4.4 reschedule with specific time",
+  "store": { "brand_name": "Lawn Bazaar", "agent_name": "Sahar" },
+  "order": { "order_number": "1003" },
+  "customer": { "name": "Ahmed", "language": "ur" },
+  "transcript": [
+    { "role": "user", "text": "کل شام پانچ بجے دوبارہ رابطہ کریں" },
+    {
+      "role": "assistant",
+      "tool": "reschedule_delivery",
+      "args": {
+        "idempotency_key": "convo-3-resched",
+        "requested_label": "کل شام پانچ بجے",
+        "requested_iso": "2026-04-29T17:00:00+05:00"
+      }
+    }
+  ],
+  "expected_outcome": "rescheduled"
+}

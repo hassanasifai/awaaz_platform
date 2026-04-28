@@ -1,0 +1,56 @@
+name = "awaaz"
+client_id = ""
+application_url = "https://app.awaaz.pk"
+embedded = true
+handle = "awaaz"
+
+[access_scopes]
+scopes = "read_orders,write_orders,read_customers,read_products"
+
+[auth]
+redirect_urls = [
+    "https://app.awaaz.pk/auth/callback",
+    "https://app.awaaz.pk/api/shopify/auth/callback",
+]
+
+[webhooks]
+api_version = "2026-01"
+
+[[webhooks.subscriptions]]
+topics = ["orders/create"]
+uri = "https://api.awaaz.pk/v1/webhooks/shopify/orders/create"
+
+[[webhooks.subscriptions]]
+topics = ["orders/updated"]
+uri = "https://api.awaaz.pk/v1/webhooks/shopify/orders/updated"
+
+[[webhooks.subscriptions]]
+topics = ["orders/cancelled"]
+uri = "https://api.awaaz.pk/v1/webhooks/shopify/orders/cancelled"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+uri = "https://api.awaaz.pk/v1/webhooks/shopify/app/uninstalled"
+
+[[webhooks.subscriptions]]
+topics = ["customers/data_request"]
+uri = "https://api.awaaz.pk/v1/webhooks/shopify/customers/data_request"
+
+[[webhooks.subscriptions]]
+topics = ["customers/redact"]
+uri = "https://api.awaaz.pk/v1/webhooks/shopify/customers/redact"
+
+[[webhooks.subscriptions]]
+topics = ["shop/redact"]
+uri = "https://api.awaaz.pk/v1/webhooks/shopify/shop/redact"
+
+[app_proxy]
+url = "https://api.awaaz.pk/v1/integrations/shopify/proxy"
+subpath = "awaaz"
+prefix = "apps"
+
+[pos]
+embedded = false
+
+[build]
+include_config_on_deploy = true

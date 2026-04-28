@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  .urdu {
+    font-family: "Noto Nastaliq Urdu", serif;
+    direction: rtl;
+    line-height: 2.4;
+  }
+}

@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1.7
+# GPU variant — installs CUDA-aware torch + faster-whisper + transformers.
+
+FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3-pip ffmpeg libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+RUN python3.11 -m pip install --upgrade pip && python3.11 -m pip install -e ".[local]"
+
+COPY . .
+
+CMD ["python3.11", "-m", "awaaz_agent.main"]
