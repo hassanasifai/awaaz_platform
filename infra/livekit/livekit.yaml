@@ -1,0 +1,28 @@
+port: 7880
+log_level: info
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: true
+  port_range_start: 50000
+  port_range_end: 60000
+
+keys:
+  ${LIVEKIT_API_KEY:devkey}: ${LIVEKIT_API_SECRET:devsecret-replace-with-random-32-bytes}
+
+room:
+  enabled_codecs:
+    - mime: audio/opus
+    - mime: audio/PCMU
+    - mime: audio/PCMA
+  empty_timeout: 300
+  max_participants: 8
+  enable_remote_unmute: true
+
+webhook:
+  api_key: ${LIVEKIT_API_KEY:devkey}
+  urls: []
+
+audio:
+  active_level: 30
+  min_percentile: 30

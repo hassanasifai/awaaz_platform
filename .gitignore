@@ -1,0 +1,89 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+.tox/
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+.npm/
+.pnpm-store/
+
+# --- Env / Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+.doppler/
+
+# --- Editor / OS ---
+.idea/
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Logs / Tmp ---
+*.log
+logs/
+tmp/
+.cache/
+
+# --- Docker / Infra runtime ---
+.docker-data/
+pgdata/
+miniodata/
+grafanadata/
+
+# --- HuggingFace / model caches ---
+.cache/
+hf_cache/
+models/*.bin
+models/*.safetensors
+models/*.onnx
+!models/.gitkeep
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# --- Test artifacts ---
+test-results/
+playwright-report/
+playwright/.cache/
+
+# --- Generated ---
+apps/dashboard/.next/
+apps/dashboard/next-env.d.ts
+packages/shared-types/generated/
+*.generated.ts
+*.generated.py

@@ -1,0 +1,19 @@
+log_level: info
+api_key: ${LIVEKIT_API_KEY:devkey}
+api_secret: ${LIVEKIT_API_SECRET:devsecret-replace-with-random-32-bytes}
+ws_url: ${LIVEKIT_URL:ws://livekit:7880}
+
+sip_port: 5060
+rtp_port_range_start: 10000
+rtp_port_range_end: 10100
+
+# Trunks defined dynamically via LiveKit SIPInbound/SIPOutboundTrunk APIs.
+# This file only sets defaults.
+
+logging:
+  level: info
+  json: true
+
+redis:
+  address: redis:6379
+  db: 1

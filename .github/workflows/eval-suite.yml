@@ -1,0 +1,61 @@
+name: eval-suite
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC nightly
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "apps/api/awaaz_api/fsm/**"
+      - "apps/api/awaaz_api/llm/**"
+      - "apps/api/awaaz_api/channels/**"
+      - "packages/eval-harness/**"
+
+jobs:
+  run-evals:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: awaaz_test
+          POSTGRES_USER: awaaz
+          POSTGRES_PASSWORD: testpass
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U awaaz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://awaaz:testpass@localhost:5432/awaaz_test
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      EVAL_MOCK_MODE: ${{ vars.EVAL_MOCK_MODE || 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+
+      - name: Install
+        working-directory: apps/api
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Migrate
+        working-directory: apps/api
+        run: alembic upgrade head
+
+      - name: Run eval suite
+        working-directory: apps/api
+        run: python -m awaaz_api.scripts.run_eval_suite --report eval-report.json
+
+      - name: Compare against baseline
+        working-directory: apps/api
+        run: python -m awaaz_api.scripts.eval_diff --report eval-report.json --baseline tests/eval/baseline.json --max-regression 0.05
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: apps/api/eval-report.json

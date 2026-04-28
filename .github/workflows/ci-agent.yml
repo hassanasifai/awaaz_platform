@@ -1,0 +1,50 @@
+name: ci-agent
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/agent/**", ".github/workflows/ci-agent.yml"]
+  pull_request:
+    paths: ["apps/agent/**", ".github/workflows/ci-agent.yml"]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: test
+      ANTHROPIC_API_KEY: test
+      DEEPGRAM_API_KEY: test
+      UPLIFTAI_API_KEY: test
+      LIVEKIT_API_KEY: test
+      LIVEKIT_API_SECRET: testsecrettestsecrettestsecret32
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/agent/pyproject.toml
+
+      - name: Install dependencies (CPU only — no GPU/torch wheels)
+        working-directory: apps/agent
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" --no-deps
+          pip install -r requirements-ci.txt
+
+      - name: Ruff
+        working-directory: apps/agent
+        run: ruff check .
+
+      - name: Black
+        working-directory: apps/agent
+        run: black --check .
+
+      - name: mypy strict
+        working-directory: apps/agent
+        run: mypy awaaz_agent
+
+      - name: pytest
+        working-directory: apps/agent
+        run: pytest -q -m "not integration and not eval"

@@ -1,0 +1,65 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 400
+    spike_limit_mib: 100
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: ${ENVIRONMENT}
+        action: upsert
+      - key: service.namespace
+        value: awaaz
+        action: upsert
+  attributes/redact:
+    actions:
+      - key: phone_number
+        action: delete
+      - key: customer_phone
+        action: delete
+      - key: customer_address
+        action: delete
+      - key: meta_wa_access_token
+        action: delete
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: awaaz
+  otlp/langfuse:
+    endpoint: ${LANGFUSE_HOST:http://langfuse:3000}
+    tls:
+      insecure: true
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, resource, batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, resource, batch]
+      exporters: [debug]

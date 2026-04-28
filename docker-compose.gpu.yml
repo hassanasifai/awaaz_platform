@@ -1,0 +1,88 @@
+name: awaaz
+
+# Overlay file for the local-stack profile.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile local-stack up -d --build
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    command: >
+      --model ${VLLM_MODEL:-Qwen/Qwen3-8B-Instruct-AWQ}
+      --quantization awq
+      --max-model-len 8192
+      --enable-prefix-caching
+      --port 8000
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ./.cache/huggingface:/root/.cache/huggingface
+    ports: ["8001:8000"]
+    profiles: ["local-stack"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  whisperlive:
+    build:
+      context: ./infra/whisperlive
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      MODEL: ${FASTER_WHISPER_MODEL:-kingabzpro/whisper-large-v3-turbo-urdu}
+      COMPUTE_TYPE: ${FASTER_WHISPER_COMPUTE_TYPE:-int8_float16}
+      DEVICE: ${FASTER_WHISPER_DEVICE:-cuda}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ./.cache/huggingface:/root/.cache/huggingface
+    ports: ["9090:9090"]
+    profiles: ["local-stack"]
+
+  indic-parler:
+    build:
+      context: ./infra/indic-parler
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      MODEL: ${INDIC_PARLER_MODEL:-ai4bharat/indic-parler-tts}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ./.cache/huggingface:/root/.cache/huggingface
+    ports: ["9091:9091"]
+    profiles: ["local-stack"]
+
+  api:
+    environment:
+      LLM_PROVIDER: vllm
+      STT_PROVIDER: faster_whisper
+      TTS_PROVIDER: indic_parler
+      VLLM_BASE_URL: http://vllm:8000/v1
+      FASTER_WHISPER_BASE_URL: http://whisperlive:9090
+      INDIC_PARLER_BASE_URL: http://indic-parler:9091
+
+  agent:
+    environment:
+      LLM_PROVIDER: vllm
+      STT_PROVIDER: faster_whisper
+      TTS_PROVIDER: indic_parler
+      VLLM_BASE_URL: http://vllm:8000/v1

@@ -1,0 +1,233 @@
+name: awaaz
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-awaaz}
+      POSTGRES_USER: ${POSTGRES_USER:-awaaz}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-awaaz} -d ${POSTGRES_DB:-awaaz}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "allkeys-lru"]
+    volumes: ["redisdata:/data"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    volumes: ["miniodata:/data"]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${S3_ACCESS_KEY:-minioadmin} ${S3_SECRET_KEY:-minioadmin};
+        mc mb -p local/${S3_BUCKET_RECORDINGS:-awaaz-recordings} || true;
+        mc mb -p local/${S3_BUCKET_MEDIA:-awaaz-media} || true;
+        mc anonymous set none local/${S3_BUCKET_RECORDINGS:-awaaz-recordings};
+        mc anonymous set none local/${S3_BUCKET_MEDIA:-awaaz-media};
+        echo 'minio buckets ready';
+      "
+    restart: "no"
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    profiles: ["voice"]
+    logging: *default-logging
+
+  livekit-sip:
+    image: livekit/sip:latest
+    restart: unless-stopped
+    volumes:
+      - ./infra/livekit/sip.yaml:/sip.yaml:ro
+    ports:
+      - "5060:5060/udp"
+      - "10000-10100:10000-10100/udp"
+    profiles: ["voice"]
+    depends_on: [livekit]
+    logging: *default-logging
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    image: awaaz/api:dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: awaaz-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    image: awaaz/api:dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: awaaz-worker
+      AWAAZ_ROLE: worker
+    command: ["python", "-m", "awaaz_api.workers.run_all"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  agent:
+    build:
+      context: ./apps/agent
+      dockerfile: Dockerfile
+    image: awaaz/agent:dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      OTEL_SERVICE_NAME: awaaz-agent
+    profiles: ["voice"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  dashboard:
+    build:
+      context: ./apps/dashboard
+      dockerfile: Dockerfile
+    image: awaaz/dashboard:dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
+    ports: ["3000:3000"]
+    depends_on: [api]
+    logging: *default-logging
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.106.1
+    restart: unless-stopped
+    command: ["--config=/etc/otel.yaml"]
+    volumes:
+      - ./infra/otel-collector/otel.yaml:/etc/otel.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "13133:13133" # health
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    ports: ["9090:9090"]
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./infra/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports: ["3001:3000"]
+    depends_on: [prometheus]
+    logging: *default-logging
+
+  langfuse:
+    image: langfuse/langfuse:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-awaaz}:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3002
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-please-replace-me}
+      SALT: ${LANGFUSE_SALT:-please-replace-me}
+      TELEMETRY_ENABLED: "false"
+    ports: ["3002:3000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *default-logging
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  miniodata: {}
+  promdata: {}
+  grafanadata: {}
