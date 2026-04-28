@@ -1,0 +1,23 @@
+# Default to LF line endings everywhere — keeps Linux/macOS containers happy.
+* text=auto eol=lf
+
+# Binary files
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.onnx binary
+*.bin  binary
+*.safetensors binary
+*.woff binary
+*.woff2 binary
+
+# Shell scripts always LF
+*.sh   text eol=lf
+Makefile text eol=lf
+
+# Keep CRLF in batch files
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
